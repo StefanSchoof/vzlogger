@@ -18,7 +18,7 @@ jobs:
       - name: Set env sha short
         run: echo "GITHUB_SHA_SHORT=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
       - name: Set all plattforms
-        run: echo "PLATFORMS=linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6" >> $GITHUB_ENV
+        run: echo "PLATFORMS=linux/amd64,linux/arm/v6" >> $GITHUB_ENV
         if: ${{ github.ref == 'refs/heads/master' || github.event.pull_request }}
 
       - name: Set up QEMU
