@@ -50,6 +50,7 @@ void *reading_thread(void *arg) {
 	time_t aggIntEnd;
 	const meter_details_t *details;
 	size_t n = 0;
+	bool first_reading = true;
 
 	details = meter_get_details(mtr->protocolId());
 	std::vector<Reading> rds(details->max_readings, Reading(mtr->identifier()));
@@ -65,6 +66,14 @@ void *reading_thread(void *arg) {
 				aggIntEnd += mtr->aggtime(); /* end of this aggregation period */
 			} while ((aggIntEnd < time(NULL)) && (mtr->aggtime() > 0));
 			do { /* aggregate loop */
+
+				if (mtr->interval() > 0 && !first_reading) {
+					print(log_info, "waiting %i seconds before next reading", mtr->name(),
+						  mtr->interval());
+					sleep(mtr->interval());
+				}
+				first_reading = false;
+
 				/* fetch readings from meter and calculate delta */
 				n = mtr->read(rds, details->max_readings);
 
@@ -80,6 +89,27 @@ void *reading_thread(void *arg) {
 							  rds[i].time_ms());
 					}
 				}
+				if (n > 0 && !options.haveTimeMachine())
+					for (size_t i = 0; i < n; i++)
+						if (rds[i].time_s() < 631152000) { // 1990-01-01 00:00:00
+							print(log_error,
+								  "meter returned readings with a timestamp before 1990, IGNORING.",
+								  mtr->name());
+							print(log_error, "most likely your meter is misconfigured,",
+								  mtr->name());
+							print(log_error,
+								  "for sml meters, set `\"use_local_time\": true` in vzlogger.conf"
+								  " (meter section),",
+								  mtr->name());
+							print(log_error,
+								  "to override this check, set `\"i_have_a_time_machine\": true`"
+								  " in vzlogger.conf.",
+								  mtr->name());
+							// note: we do NOT throw an exception or such,
+							// because this might be a spurious error,
+							// the next reading might be valid again.
+							n = 0;
+						}
 
 				/* insert readings into channel queues */
 				if (n > 0)
@@ -158,11 +188,6 @@ void *reading_thread(void *arg) {
 					// print(log_debug, "Buffer dump (size=%i): %s", (*ch)->name(),
 					//(*ch)->size(), (*ch)->dump().c_str());
 				}
-			}
-
-			if (mtr->interval() > 0) {
-				print(log_info, "Next reading in %i seconds", mtr->name(), mtr->interval());
-				sleep(mtr->interval());
 			}
 		} while (true);
 	} catch (std::exception &e) {
