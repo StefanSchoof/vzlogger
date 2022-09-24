@@ -1,4 +1,4 @@
-ARG DEBIAN_VERSION=buster-slim
+ARG DEBIAN_VERSION=bullseye-slim
 
 ############################
 # STEP 1 build executable binary
@@ -6,12 +6,14 @@ ARG DEBIAN_VERSION=buster-slim
 
 FROM debian:$DEBIAN_VERSION as builder
 
-RUN apt-get update && apt-get install -y \
+RUN rm -f /etc/apt/apt.conf.d/docker-clean
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    apt-get update && apt-get install -y \
     build-essential \
     git-core \
     cmake \
     pkg-config \
-    libcurl4-openssl-dev \
+    libcurl3-dev \
     libgnutls28-dev \
     libsasl2-dev \
     uuid-dev \
@@ -52,7 +54,9 @@ FROM debian:$DEBIAN_VERSION
 
 LABEL Description="vzlogger"
 
-RUN apt-get update && apt-get install -y \
+RUN rm -f /etc/apt/apt.conf.d/docker-clean
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    apt-get update && apt-get install -y \
     libcurl4 \
     libgnutls30 \
     libsasl2-2  \
@@ -62,7 +66,7 @@ RUN apt-get update && apt-get install -y \
     libmicrohttpd12 \
     libltdl7 \
     libatomic1 \
-    libjson-c3 \
+    libjson-c5 \
     liblept5 \
     libmosquitto1 \
     libunistring2 \
