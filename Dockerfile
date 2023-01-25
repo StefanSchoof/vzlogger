@@ -4,15 +4,19 @@
 
 FROM alpine:latest as builder
 
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    git-core \
+RUN apk add --no-cache \
+    gcc \
+    g++ \
+    libc-dev \
+    linux-headers \
+    git \
+    make \
     cmake \
-    pkg-config \
-    libcurl4-openssl-dev \
-    libgnutls28-dev \
-    libsasl2-dev \
-    uuid-dev \
+    curl-dev \
+    gnutls-dev \
+    cyrus-sasl-dev \
+    # for libuuid
+    util-linux-dev \
     libtool \
     libgcrypt-dev \
     libmicrohttpd-dev \
@@ -49,21 +53,19 @@ FROM alpine:latest
 
 LABEL Description="vzlogger"
 
-RUN apt-get update && apt-get install -y \
-    libcurl4 \
-    libgnutls30 \
-    libsasl2-2  \
-    libuuid1 \
-    libssl1.1 \
-    libgcrypt20  \
-    libmicrohttpd12 \
-    libltdl7 \
-    libatomic1 \
-    libjson-c3 \
-    liblept5 \
-    libmosquitto1 \
-    libunistring2 \
-    && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache \
+    libcurl \
+    gnutls \
+    libsasl \
+    libuuid \
+    libgcrypt \
+    libmicrohttpd \
+    json-c \
+    libatomic \
+    mosquitto-libs \
+    libunistring \
+    libstdc++ \
+    libgcc
 
 # libsml is linked statically => no need to copy
 COPY --from=builder /usr/local/bin/vzlogger /usr/local/bin/vzlogger
