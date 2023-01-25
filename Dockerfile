@@ -1,62 +1,55 @@
-ARG DEBIAN_VERSION=bullseye-slim
-
 ############################
 # STEP 1 build executable binary
 ############################
 
-FROM debian:$DEBIAN_VERSION as builder
+FROM alpine:latest as builder
 
-RUN rm -f /etc/apt/apt.conf.d/docker-clean
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y \
     build-essential \
     git-core \
     cmake \
     pkg-config \
-    libcurl3-dev \
+    libcurl4-openssl-dev \
     libgnutls28-dev \
     libsasl2-dev \
     uuid-dev \
     libtool \
-    libssl-dev \
-    libgcrypt20-dev \
+    libgcrypt-dev \
     libmicrohttpd-dev \
-    libltdl-dev \
-    libjson-c-dev \
-    libleptonica-dev \
-    libmosquitto-dev \
+    json-c-dev \
+    mosquitto-dev \
     libunistring-dev \
-    dh-autoreconf \
-    && rm -rf /var/lib/apt/lists/*
+    automake \
+    autoconf
 
 WORKDIR /vzlogger
 
 RUN git clone https://github.com/volkszaehler/libsml.git --depth 1 \
- && make install -C libsml/sml
+    && make install -C libsml/sml
 
 RUN git clone https://github.com/rscada/libmbus.git --depth 1 \
- && cd libmbus \
- && ./build.sh \
- && make install
+    && cd libmbus \
+    && ./build.sh \
+    && make install
 
 COPY . /vzlogger
 
-RUN cmake -DBUILD_TEST=off \
- && make \
- && make install
+ARG build_test=off
+RUN cmake -DBUILD_TEST=${build_test} \
+    && make \
+    && make install \
+    && if [ "$build_test" = "on" ]; then make test; fi
 
 
 #############################
 ## STEP 2 build a small image
 #############################
 
-FROM debian:$DEBIAN_VERSION
+FROM alpine:latest
 
 LABEL Description="vzlogger"
 
-RUN rm -f /etc/apt/apt.conf.d/docker-clean
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y \
     libcurl4 \
     libgnutls30 \
     libsasl2-2  \
@@ -66,7 +59,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     libmicrohttpd12 \
     libltdl7 \
     libatomic1 \
-    libjson-c5 \
+    libjson-c3 \
     liblept5 \
     libmosquitto1 \
     libunistring2 \
@@ -77,7 +70,9 @@ COPY --from=builder /usr/local/bin/vzlogger /usr/local/bin/vzlogger
 COPY --from=builder /usr/local/lib/libmbus.so* /usr/local/lib/
 
 # without running a user context, no exec is possible and without the dialout group no access to usb ir reader possible
-RUN useradd -M -G dialout vz
-USER vz
+RUN adduser -S vz -G dialout
 
+RUN vzlogger --version
+
+USER vz
 CMD ["vzlogger", "--foreground"]
