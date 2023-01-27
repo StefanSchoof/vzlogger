@@ -24,7 +24,8 @@ RUN apk add --no-cache \
     mosquitto-dev \
     libunistring-dev \
     automake \
-    autoconf
+    autoconf \
+    gtest-dev
 
 WORKDIR /vzlogger
 
@@ -42,7 +43,7 @@ ARG build_test=off
 RUN cmake -DBUILD_TEST=${build_test} \
     && make \
     && make install \
-    && if [ "$build_test" = "on" ]; then make test; fi
+    && if [ "$build_test" != "off" ]; then make test; fi
 
 
 #############################
